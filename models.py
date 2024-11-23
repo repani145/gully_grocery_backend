@@ -130,37 +130,10 @@ class Category(Document):
         }
 
 
+class OTP_REG(Document):
+    email = EmailField(required=True,null=False,unique=True)
+    otp = IntField(required=True,null=False)
+    otp_time = DateTimeField()
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# # Create a route to add a user
-# @app.route('/add_user', methods=['POST'])
-# def add_user():
-#     username = request.json.get('username')
-#     email = request.json.get('email')
-
-#     user = User(username=username, email=email)
-#     user.save()  # Save the user to the database
-#     return jsonify(str(user.id)), 201
-
-# # Create a route to get all users
-# @app.route('/users', methods=['GET'])
-# def get_users():
-#     users = User.objects()  # Retrieve all users
-#     user_list = [{'id': str(user.id), 'username': user.username, 'email': user.email} for user in users]
-#     return jsonify(user_list)
 
