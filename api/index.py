@@ -24,6 +24,16 @@ from werkzeug.utils import secure_filename
 import os 
 ###############
 
+# SMTP Configuration
+SMTP_SERVER = "smtp.gmail.com"
+SMTP_PORT = 587
+SENDER_EMAIL = "gullyygroceryy@gmail.com"
+SENDER_PASSWORD = "bzhj kmux nwny qxpv"
+RECEIVER_EMAIL = "gullyygroceryy@gmail.com"
+
+import smtplib
+import random
+
 class MongoJSONEncoder(DefaultJSONProvider):  #To conver the every ObjectId into str automatically
     def default(self, obj):
         if isinstance(obj, ObjectId):
@@ -47,19 +57,7 @@ if not os.path.exists(CATEGORIES):
 SINGLEITEM = 'static/item_images'
 if not os.path.exists(SINGLEITEM):
     os.makedirs(SINGLEITEM)
-# # Your MongoDB credentials
-# username = "all_users"  # Replace with your actual username
-# password = "Users@123"  # Replace with your actual password
 
-# # URL-encode the username and password
-# encoded_username = quote_plus(username)
-# encoded_password = quote_plus(password)
-# app.config['MONGODB_SETTINGS'] = {
-#     'db': 'gullygrocery',
-#     'host': f"mongodb+srv://{encoded_username}:{encoded_password}@gullygrocery.swlbs.mongodb.net/?retryWrites=true&w=majority&tls=true",
-# }
-
-# db = MongoEngine(app)
 
 admin_permission = Permission(RoleNeed('admin'))
 vendor_permission = Permission(RoleNeed('vendor'))
@@ -71,49 +69,120 @@ app.config['JWT_SECRET_KEY'] = secret_key  # Change this to a more secure key
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(minutes=60) 
 jwt = JWTManager(app)
 
-# @jwt.user_identity_loader
-# def user_identity_lookup(identity):
-#     return {"username": identity['username'], "role": identity['role']}
-
 all_categories=["dairy","snaks","rice","dal","atta","oils","cooldrinks","cleaning"]
 
 @app.route('/',methods=['GET'])
 def one():
     return "Welcome to Gully Grocery !"
 
-@app.route('/user_signup',methods=['POST'])
+@app.route('/user_signup',methods=['POST','PUT'])
 def user_signup():
-    context = {
+    if request.method == 'POST':
+        context = {
         "data":{},
         "success":1,
         "message":"registered successfully!"
-    }
-    json_data = request.get_json()
-    try:
-        data = validators.user_schema.load(json_data)
-        if not data:
-            raise ValidationError("data is not validated properly! ")
-        context['data']=validators.user_schema.dump(data)
-        context['data']['password']=generate_password_hash(context['data']['password'])
+        }
+        json_data = request.get_json()
+        try:
+            data = validators.user_schema.load(json_data)
+            if not data:
+                raise ValidationError("data is not validated properly! ")
+            context['data']=validators.user_schema.dump(data)
+            context['data']['password']=generate_password_hash(context['data']['password'])
 
-        user = models.Users(**context['data'])
-        user.save()
-        # DB.users_collection.insert_one(context['data'])
-        context['data']['_id']=str(user.id)
-    except NotUniqueError as e:
-        a=(str(e)[str(e).find("full error"):-1])
-        x=a.find('full error: ')+(len('full error: ')-1)
-        dict_obj = ast.literal_eval(a[x:])
-        for i in dict_obj['keyValue']:
-            err = f"user existed with {i} : {dict_obj['keyValue'][i]}"
-        context['data']={}
-        context['message']=err
-        context['success']=0   
-    except Exception as e:
-        context['success']=0
-        context['data']={}
-        context['message']=str(e)
-    return jsonify(context)
+            user = models.Users(**context['data'])
+            user.save()
+            # DB.users_collection.insert_one(context['data'])
+            context['data']['_id']=str(user.id)
+        except NotUniqueError as e:
+            a=(str(e)[str(e).find("full error"):-1])
+            x=a.find('full error: ')+(len('full error: ')-1)
+            dict_obj = ast.literal_eval(a[x:])
+            for i in dict_obj['keyValue']:
+                err = f"user existed with {i} : {dict_obj['keyValue'][i]}"
+            context['data']={}
+            context['message']=err
+            context['success']=0   
+        except Exception as e:
+            context['success']=0
+            context['data']={}
+            context['message']=str(e)
+        return jsonify(context)
+    
+@app.route('/user_data',methods=['GET','PUT'])
+@jwt_required()
+def user_data():
+    if request.method=='GET':
+        context = {
+        "data":{},
+        "success":1,
+        "message":"data found successfully!"
+        }
+        jwt_data = get_jwt_identity()
+        id = jwt_data.get('user_id')
+        try:
+            user = models.Users.objects.get(id=id)
+            data = {}
+            for i in user:
+                data[i]=user[i]
+            del data['created_at']
+            del data['updated_at']
+            del data['dob']
+            # print("user = >>>>>",data)
+            context['data']=data
+        except Exception as e:
+            context['success']=0
+            context['message']=str(e)
+        return context
+    
+    elif request.method == 'PUT':
+        context = {
+            "data": {},
+            "success": 1,
+            "message": "Profile updated successfully!"
+        }
+        json_data = request.get_json()
+        try:
+            # Extract the user ID and email from the request
+            user_id = json_data.get('id')
+            email = json_data.get('email')
+
+            if not user_id or not email:
+                raise Exception("User ID and email are required.")
+
+            # Find the user in the database
+            user = models.Users.objects(id=user_id).first()
+            if not user:
+                raise Exception("User not found.")
+
+            # # Verify the email before updating
+            # if user['email'] != email:
+            #     raise Exception("Email verification failed.")
+
+            # Update the user's data (excluding protected fields like email)
+            update_fields = {k: v for k, v in json_data.items()}
+            user.update(**update_fields,updated_at=datetime.now())
+            user.reload()
+
+            context['data'] = {
+                "id": str(user.id),
+                "username": user.username,
+                "email": user.email,
+                "phone_number": user.phone_number,
+                "address": user.address,
+                "landmark": user.landmark,
+                "dob": user.dob,
+                "role": user.role
+            }
+        except Exception as ve:
+            context['success'] = 0
+            context['message'] = str(ve)
+        except Exception as e:
+            context['success'] = 0
+            context['message'] = str(e)
+        return jsonify(context)
+
 
 @app.route('/vendor_signup',methods=['POST'])  #ok
 def vendor_signup():
@@ -130,7 +199,7 @@ def vendor_signup():
     address = request.form.get('address')
     landmark = request.form.get('landmark')
     json_data = {"shop_name":shop_name,"email":email,"phone_number":phone_number,"username":username,"password":password,"address":address,"landmark":landmark}
-    print(request.files)
+    # print(request.files)
     try:
         if 'image' not in request.files:
             raise Exception("shop image is required")
@@ -147,7 +216,7 @@ def vendor_signup():
         if file:
             filename = secure_filename(user_name)
             file_path = os.path.join('static/shop_images', filename+file.filename[file.filename.rfind('.'):])
-        print(context['data'],file_path)
+        # print(context['data'],file_path)
         vendor = models.Vendors(**context['data'],image_path = filename)
         vendor.save()
         file.save(file_path)
@@ -242,7 +311,7 @@ def login():
                     access_token = create_access_token(identity={"username": username, "role": user.get('role'),"shop_id":idd})
                 context['data']={**user,"_id":idd}
                 # access_token = create_access_token(identity={**context['data']})
-                print('############################# role =',{"username": username, "role": user.get('role'),"shop_id":idd})
+                # print('############################# role =',{"username": username, "role": user.get('role'),"shop_id":idd})
                 return jsonify({"accessToken":access_token,**context})
                 # context['data']={**user,"_id":idd,"access_token":access_token}
             else:
@@ -342,7 +411,7 @@ def add_item():
 def remove_item(item_id):
     current_user = get_jwt_identity()
     shop_id = current_user.get('shop_id')
-    print("shop_id",shop_id)
+    # print("shop_id",shop_id)
     if request.method == 'DELETE':
         context = {
             "data":{},
@@ -427,7 +496,7 @@ def all_category_items(item_type):
     }
     current_user = get_jwt_identity()
     shop_id = current_user.get('shop_id')
-    print("shop_id",shop_id)
+    # print("shop_id",shop_id)
     try:
         data = models.AllItems.objects.filter(category=item_type)
         if data == None:
@@ -463,7 +532,7 @@ def single_cat_with_vendor(item_type):
         json_data = request.get_json()
         shop_id = json_data.get('shop_id')
         
-    print("shop_id",shop_id)
+    # print("shop_id",shop_id)
     try:
         data = models.AllItems.objects.filter(category=item_type,shop_id=shop_id)
         if data == None:
@@ -496,7 +565,7 @@ def add_to_cart():
         "data":{}
     }
     current_user = get_jwt_identity()
-    print('################################## current user ',current_user)
+    # print('################################## current user ',current_user)
     user_role = current_user['role']
     user_id = current_user['user_id']
     if user_role != 'user':
@@ -640,7 +709,7 @@ def clear_cart():
         items = models.Cart.objects.filter(user_id=current_user.get('user_id'))
         if items==None or len(items)==0:
             raise Exception(' cart is empty !')
-        print(items)
+        # print(items)
         items.delete()
         # items.save()
     except Exception as e:
@@ -666,15 +735,15 @@ def add_one_del(id):
         "data":{}
         }
         try:
-            print('for deleteing the one item =======>>> ',id)
+            # print('for deleteing the one item =======>>> ',id)
             item  = models.Cart.objects.filter(item_id=id).first()
-            print(item)
-            print("################################ id  item => ",item.to_mongo().to_dict())
+            # print(item)
+            # print("################################ id  item => ",item.to_mongo().to_dict())
             if item == None:
                 raise Exception('item not found to remove from cart')
             if item==None:
                 raise Exception(' cart is empty !')
-            print(item)
+            # print(item)
             item.delete()
             # item.save()
         except Exception as e:
@@ -712,15 +781,15 @@ def remove_cart_item(item_id):
     "data":{}
     }
     try:
-        print('for deleteing the one item =======>>> ',item_id)
+        # print('for deleteing the one item =======>>> ',item_id)
         items  = models.Cart.objects.filter(item_id=item_id)
-        print(items)
-        print("################################ id  items => ",items)
+        # print(items)
+        # print("################################ id  items => ",items)
         if items == None:
             raise Exception('items not found to remove from cart')
         if items==None:
             raise Exception(' cart is empty !')
-        print(items)
+        # print(items)
         items.delete()
         # item.save()
     except Exception as e:
@@ -779,9 +848,9 @@ def add_payment():
         "message":"payment deatils added successfully"
     }
     current_user = get_jwt_identity()
-    print("current_user= ",current_user)
+    # print("current_user= ",current_user)
     json_data = request.get_json()
-    print("json_data = ",json_data)
+    # print("json_data = ",json_data)
     try:
         user = models.Users.objects.get(id=current_user['user_id'])
         pay = models.Payment(user=user,**json_data)
@@ -811,7 +880,7 @@ def add_payment():
         for sID in vendor_orders:
             v_order = models.VendorOrders(order=order['id'],**vendor_orders[sID])
             v_order.save()
-            print(f'################## ordre saved for vendor {sID}')
+            # print(f'################## ordre saved for vendor {sID}')
 
         cart_instance.delete()
         context['data']=pay.to_mongo().to_dict()
@@ -910,7 +979,7 @@ def categories():
             "success":1
         }
         data = request.get_json()
-        print('===============================>>>>>>>>',data['id'])
+        # print('===============================>>>>>>>>',data['id'])
         try:
             category = models.Category.objects(id=data['id']).first()  # Retrieve the category by id
             if category:
@@ -929,7 +998,7 @@ def delete_cat(id):
             'message':"data deleted successfully",
             "success":1
         }
-    print('===============================>>>>>>>>',id)
+    # print('===============================>>>>>>>>',id)
     try:
         category = models.Category.objects(id=id).first()  # Retrieve the category by id
         if not category:
@@ -965,6 +1034,184 @@ def search_items():
             } for item in results]
         return jsonify(items)
     return jsonify([])
+
+
+
+@app.route('/contact_us', methods=['POST'])
+def submit_form():
+    context={
+        'success':1,
+        'message':"request send successfully",
+        'data':{}
+    }
+    try:
+        data = request.json
+        name = data.get('name')
+        email = data.get('email')
+        message = data.get('message')
+
+        if not name or not email or not message:
+            if not name:
+                context['message']='name is required field'
+            if not email:
+                context['message']='email is required field'
+            if not message:
+                context['message']='message is required field'
+            context['success']=0
+            # return jsonify({'error': 'All fields are required'}), 400
+
+        # Email content
+        email_subject = "New Contact Form Submission"
+        email_body = f"Name: {name}\nEmail: {email}\nMessage: {message}"
+
+        # Sending email
+        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+            server.starttls()  # Start secure connection
+            server.login(SENDER_EMAIL, SENDER_PASSWORD)  # Login to sender email
+            server.sendmail(SENDER_EMAIL, RECEIVER_EMAIL, f"Subject: {email_subject}\n\n{email_body}")
+
+        return jsonify({'message': 'Your message was successfully sent!'}), 200
+
+    except Exception as e:
+        return jsonify({'error': f"An error occurred: {e}"}), 500
+
+
+
+
+
+
+@app.route('/send-otp', methods=['POST'])
+def send_otp():
+    context={
+        'success':1,
+        "message":"otp send successfully",
+        "data":{}
+    }
+    try:
+        data = request.json
+        email = data.get('email')
+
+        if not email:
+            return jsonify({'error': 'Email is required'}), 400
+
+        user = models.Users.objects.filter(email=email).first()
+        vendor = models.Vendors.objects.filter(email=email).first()
+        if user or vendor:
+            context['message'] = 'email is already in use'
+            context['success'] = 0
+        # Generate a 6-digit OTP
+        otp = random.randint(100000, 999999)
+        dataa = models.OTP_REG.objects.filter(email=email).first()
+
+        #check weather email is listed or not
+        if not dataa:
+            dataa = models.OTP_REG(email=email,otp=otp,otp_time=datetime.now())
+        else:
+            dataa['otp']=otp
+            dataa['otp_time']=datetime.now()
+        # Email content
+        email_subject = "Gully Grocery verify OTP"
+        email_body = f"VERIFY your gully grocery\nEmail: {email}\nOTP is: {otp}"
+
+        RECEIVER_EMAIL = email
+
+        # Sending email
+        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+            server.starttls()  # Start secure connection
+            server.login(SENDER_EMAIL, SENDER_PASSWORD)  # Login to sender email
+            server.sendmail(SENDER_EMAIL, RECEIVER_EMAIL, f"Subject: {email_subject}\n\n{email_body}")
+
+        # context['data']=otp
+        dataa.save()
+    except Exception as e:
+        context['success']=0
+        context['message']=str(e)
+    return context
+
+
+@app.route('/verify-otp', methods=['POST'])
+def verify_otp():
+    context={
+        'success':1,
+        "message":"otp verified successfully",
+        "data":{}
+    }
+    try:
+        data = request.json
+        email = data.get('email')
+        otp = data.get('otp')
+
+        if not email or not otp:
+            return jsonify({'error': 'Email and OTP are required'}), 400
+
+        stored_data = models.OTP_REG.objects.filter(email=email).first()
+        # print("stored_data  = ",stored_data['otp'])
+
+        if not stored_data:
+            context['success']=0
+            context['message']='OTP not found for this email'
+        # print('===========>>>>>>>>>',stored_data['otp'] == int(otp) and (datetime.now() - stored_data['otp_time']).total_seconds() <= 300)
+        # Check if OTP matches and is within the valid timeframe (5 minutes)
+        if stored_data['otp'] == int(otp) and (datetime.now() - stored_data['otp_time']).total_seconds() <= 300:
+            context['message'] = 'OTP verified successfully!'
+            stored_data['otp']=0
+            stored_data.save()
+        else:
+            context['message']='Invalid or Expired OTP'
+            context['success']=0
+    except Exception as e:
+        context['success']=0
+        context['message']='Invalid or Expired OTP'
+    return context
+
+@app.route('/verfy-email', methods=['POST'])
+def verify_email():
+    context={
+        'success':1,
+        "message":"otp send successfully",
+        "data":{}
+    }
+    try:
+        data = request.json
+        email = data.get('email')
+
+        if not email:
+            raise Exception('Email is required')
+
+        user = models.Users.objects.filter(email=email).first()
+        vendor = models.Vendors.objects.filter(email=email).first()
+        if not user or not vendor:
+            context['message'] = 'email is not existed'
+            context['success'] = 0
+        # Generate a 6-digit OTP
+        otp = random.randint(100000, 999999)
+        dataa = models.OTP_REG.objects.filter(email=email).first()
+
+        #check weather email is listed or not
+        if not dataa:
+            dataa = models.OTP_REG(email=email,otp=otp,otp_time=datetime.now())
+        else:
+            dataa['otp']=otp
+            dataa['otp_time']=datetime.now()
+        # Email content
+        email_subject = "Gully Grocery verify OTP"
+        email_body = f"VERIFY your gully grocery\nEmail: {email}\nOTP is: {otp}"
+
+        RECEIVER_EMAIL = email
+
+        # Sending email
+        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+            server.starttls()  # Start secure connection
+            server.login(SENDER_EMAIL, SENDER_PASSWORD)  # Login to sender email
+            server.sendmail(SENDER_EMAIL, RECEIVER_EMAIL, f"Subject: {email_subject}\n\n{email_body}")
+
+        # context['data']=otp
+        dataa.save()
+    except Exception as e:
+        context['success']=0
+        context['message']=str(e)
+    return context
+
 
 if __name__ == "__main__":
     if not os.path.exists('static/shop_images'):
