@@ -15,7 +15,7 @@ from pymongo.errors import DuplicateKeyError
 import ast,time
 from flask_principal import Principal, Permission, RoleNeed
 from urllib.parse import quote_plus
-from flask_cors import CORS
+from flask_cors import CORS,cross_origin
 
 #######
 from flask import Flask, request, redirect, url_for
@@ -42,7 +42,7 @@ class MongoJSONEncoder(DefaultJSONProvider):  #To conver the every ObjectId into
 
 app=Flask(__name__)
 # Configure CORS to allow your frontend origin
-CORS(app, resources={r"/*": {"origins": "https://gully-grocery.vercel.app"}},allow_headers=["Content-Type", "Authorization"])
+# CORS(app)
 
 app.json = MongoJSONEncoder(app)  # Set the custom JSON provider
 principals = Principal(app)
@@ -277,6 +277,7 @@ def user_login():
     return context
 
 @app.route('/login', methods=['OPTIONS','POST'])    #ok
+@cross_origin(origins="https://gully-grocery.vercel.app")
 def login():
     context = {
         "success":1,
