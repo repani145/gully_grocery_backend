@@ -73,11 +73,11 @@ jwt = JWTManager(app)
 
 all_categories=["dairy","snaks","rice","dal","atta","oils","cooldrinks","cleaning"]
 
-@app.route('/',methods=['OPTIONS','GET'])
+@app.route('/',methods=['GET'])
 def one():
     return "Welcome to Gully Grocery !"
 
-@app.route('/user_signup',methods=['OPTIONS','POST','PUT'])
+@app.route('/user_signup',methods=['POST','PUT'])
 def user_signup():
     if request.method == 'POST':
         context = {
@@ -112,7 +112,7 @@ def user_signup():
             context['message']=str(e)
         return jsonify(context)
     
-@app.route('/user_data',methods=['OPTIONS','GET','PUT'])
+@app.route('/user_data',methods=['GET','PUT'])
 @jwt_required()
 def user_data():
     if request.method=='GET':
@@ -186,7 +186,7 @@ def user_data():
         return jsonify(context)
 
 
-@app.route('/vendor_signup',methods=['OPTIONS','POST'])  #ok
+@app.route('/vendor_signup',methods=['POST'])  #ok
 def vendor_signup():
     context = {
         "data":{},
@@ -238,7 +238,7 @@ def vendor_signup():
         context['message']=str(e)
     return jsonify(context)
 
-@app.route('/user_login', methods=['OPTIONS','POST'])    #ok
+@app.route('/user_login', methods=['POST'])    #ok
 def user_login():
     context = {
         "success":1,
@@ -276,7 +276,7 @@ def user_login():
         context['success']=0
     return context
 
-@app.route('/login', methods=['OPTIONS','POST'])    #ok
+@app.route('/login', methods=['POST'])    #ok
 def login():
     context = {
         "success":1,
@@ -332,7 +332,7 @@ def login():
 
 
 
-@app.route('/add_item', methods=['OPTIONS','POST'])                            # TTT
+@app.route('/add_item', methods=['POST'])                            # TTT
 @jwt_required()  
 def add_item():
     context = {
@@ -408,7 +408,7 @@ def add_item():
 
     return jsonify(context)
 
-@app.route('/single_item/<item_id>',methods=['OPTIONS','DELETE','PATCH'])      # TTT
+@app.route('/single_item/<item_id>',methods=['DELETE','PATCH'])      # TTT
 @jwt_required()
 def remove_item(item_id):
     current_user = get_jwt_identity()
@@ -488,7 +488,7 @@ def remove_item(item_id):
 
     return context
 
-@app.route('/single_type/<item_type>',methods=['OPTIONS','GET'])               # TTT
+@app.route('/single_type/<item_type>',methods=['GET'])               # TTT
 @jwt_required()
 def all_category_items(item_type):
     context = {
@@ -519,7 +519,7 @@ def all_category_items(item_type):
 
 
 
-@app.route('/vendor_single_type/<item_type>',methods=['OPTIONS','GET','POST'])     
+@app.route('/vendor_single_type/<item_type>',methods=['GET','POST'])     
 @jwt_required()
 def single_cat_with_vendor(item_type):
     context = {
@@ -558,7 +558,7 @@ def single_cat_with_vendor(item_type):
 
 
 
-@app.route('/add_to_cart',methods=['OPTIONS','POST'])  #ok
+@app.route('/add_to_cart',methods=['POST'])  #ok
 @jwt_required()
 def add_to_cart():
     context={
@@ -589,7 +589,7 @@ def add_to_cart():
 
 
 
-@app.route('/cart',methods=['OPTIONS','GET'])  # ok
+@app.route('/cart',methods=['GET'])  # ok
 @jwt_required()
 def cart():
     context={
@@ -691,7 +691,7 @@ def cart():
     #     return context
         
 
-@app.route('/clear_cart',methods=['OPTIONS',"DELETE"])
+@app.route('/clear_cart',methods=["DELETE"])
 @jwt_required()
 def clear_cart():
     context={
@@ -720,7 +720,7 @@ def clear_cart():
     return context
 
 
-@app.route('/add_one_del/<id>',methods=['OPTIONS','PATCH','DELETE'])
+@app.route('/add_one_del/<id>',methods=['PATCH','DELETE'])
 @jwt_required()
 def add_one_del(id):
     current_user = get_jwt_identity()
@@ -774,7 +774,7 @@ def add_one_del(id):
             context['message']=str(e)
     return context
 
-@app.route('/remove_cart_item/<item_id>',methods=['OPTIONS','DELETE'])
+@app.route('/remove_cart_item/<item_id>',methods=['DELETE'])
 @jwt_required()
 def remove_cart_item(item_id):
     context={
@@ -800,7 +800,7 @@ def remove_cart_item(item_id):
     return context
 
 
-@app.route('/all_item_types',methods=['OPTIONS','GET'])
+@app.route('/all_item_types',methods=['GET'])
 @jwt_required()
 def all_items():
     context = {
@@ -816,7 +816,7 @@ def all_items():
     return context
 
 
-@app.route('/all_shops',methods=['OPTIONS','GET'])
+@app.route('/all_shops',methods=['GET'])
 # @jwt_required()
 def all_shops():
     context = {
@@ -841,7 +841,7 @@ def all_shops():
     return context
 
 
-@app.route('/payment',methods=['OPTIONS','POST'])
+@app.route('/payment',methods=['POST'])
 @jwt_required()
 def add_payment():
     context = {
@@ -892,7 +892,7 @@ def add_payment():
     return context
 
 
-@app.route('/my-orders',methods=['OPTIONS','GET'])
+@app.route('/my-orders',methods=['GET'])
 @jwt_required()
 def my_orders():
     context = {
@@ -919,7 +919,7 @@ def my_orders():
     return context
 
 
-@app.route('/categories', methods=['OPTIONS','GET', 'POST', 'DELETE'])
+@app.route('/categories', methods=['GET', 'POST', 'DELETE'])
 @jwt_required()
 def categories():
     if request.method == 'GET':
@@ -992,7 +992,7 @@ def categories():
             context['message']=str(e)
             context['success']=0
 
-@app.route('/delete-cat/<string:id>',methods=['OPTIONS','DELETE'])
+@app.route('/delete-cat/<string:id>',methods=['DELETE'])
 @jwt_required()
 def delete_cat(id):
     context = {
@@ -1021,7 +1021,7 @@ def delete_cat(id):
     return context
 
 
-@app.route('/search', methods=['OPTIONS','GET'])
+@app.route('/search', methods=['GET'])
 @jwt_required()
 def search_items():
     query = request.args.get('query', '')
@@ -1039,7 +1039,7 @@ def search_items():
 
 
 
-@app.route('/contact_us', methods=['OPTIONS','POST'])
+@app.route('/contact_us', methods=['POST'])
 def submit_form():
     context={
         'success':1,
@@ -1082,7 +1082,7 @@ def submit_form():
 
 
 
-@app.route('/send-otp', methods=['OPTIONS','POST'])
+@app.route('/send-otp', methods=['POST'])
 def send_otp():
     context={
         'success':1,
@@ -1131,7 +1131,7 @@ def send_otp():
     return context
 
 
-@app.route('/verify-otp', methods=['OPTIONS','POST'])
+@app.route('/verify-otp', methods=['POST'])
 def verify_otp():
     context={
         'success':1,
@@ -1166,7 +1166,7 @@ def verify_otp():
         context['message']='Invalid or Expired OTP'
     return context
 
-@app.route('/verfy-email', methods=['OPTIONS','POST'])
+@app.route('/verfy-email', methods=['POST'])
 def verify_email():
     context={
         'success':1,
