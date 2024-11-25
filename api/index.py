@@ -42,7 +42,7 @@ class MongoJSONEncoder(DefaultJSONProvider):  #To conver the every ObjectId into
 
 app=Flask(__name__)
 # Configure CORS to allow your frontend origin
-# CORS(app)
+CORS(app)
 
 app.json = MongoJSONEncoder(app)  # Set the custom JSON provider
 principals = Principal(app)
@@ -277,7 +277,6 @@ def user_login():
     return context
 
 @app.route('/login', methods=['OPTIONS','POST'])    #ok
-@cross_origin(origins="https://gully-grocery.vercel.app")
 def login():
     context = {
         "success":1,
