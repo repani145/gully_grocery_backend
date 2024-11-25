@@ -42,7 +42,7 @@ class MongoJSONEncoder(DefaultJSONProvider):  #To conver the every ObjectId into
 
 app=Flask(__name__)
 # Configure CORS to allow your frontend origin
-CORS(app, resources={r"/*": {"origins": "https://gully-grocery.vercel.app"}})
+CORS(app, resources={r"/*": {"origins": "https://gully-grocery.vercel.app"}},allow_headers=["Content-Type", "Authorization"])
 
 app.json = MongoJSONEncoder(app)  # Set the custom JSON provider
 principals = Principal(app)
